@@ -1,0 +1,29 @@
+{
+  "name": "weekday-shepherd-stats",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "tsx --test \"tests/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit",
+    "seed": "tsx --env-file=.env.local scripts/seed.ts",
+    "refresh": "tsx --env-file=.env.local scripts/refresh.ts",
+    "stats": "tsx --env-file=.env.local scripts/stats.ts"
+  },
+  "dependencies": {
+    "@vercel/analytics": "^2.0.1",
+    "googleapis": "^144.0.0",
+    "next": "^15.5.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "tsx": "^4.23.1",
+    "typescript": "^5.7.0"
+  }
+}

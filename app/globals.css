@@ -1,0 +1,828 @@
+:root {
+  /*
+   * 브라우저가 그리는 부분(select 화살표, 옵션 목록, 스크롤바, 커서)을 테마에 맞춘다.
+   * 이 선언이 없으면 폼 컨트롤이 밝은 테마 기준으로 그려져, 어두운 배경 위에 검은 글씨가 얹힌다.
+   */
+  color-scheme: light;
+
+  --bg: #f4f6f9;
+  --surface: #ffffff;
+  --surface-muted: #eef1f6;
+  --border: #dfe4ec;
+  --text: #1a2230;
+  --text-muted: #6b7686;
+  --brand: #2a4a73;
+  --brand-soft: #e8eef7;
+  /* --brand 위에 얹는 글자색. 밝은 테마의 --brand는 짙어서 흰 글씨가 맞다. */
+  --on-brand: #ffffff;
+  --accent-문자: #3b82f6;
+  --accent-통화: #10b981;
+  --accent-성경: #8b5cf6;
+  --accent-만남: #f59e0b;
+  --danger: #dc2626;
+  --radius: 14px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --bg: #12161d;
+    --surface: #1b212b;
+    --surface-muted: #232a36;
+    --border: #2f3846;
+    --text: #e8ecf3;
+    --text-muted: #9aa5b5;
+    --brand: #7ba7dd;
+    --brand-soft: #23303f;
+    /* 어두운 테마의 --brand는 밝은 파랑이라 흰 글씨는 대비가 2.5:1까지 떨어진다. 글자를 어둡게 뒤집는다. */
+    --on-brand: #10161f;
+
+    /* 어두운 배경에서 읽히도록 한 단계씩 밝힌 값. 밝은 테마 값을 그대로 쓰면 대비가 모자란다. */
+    --accent-문자: #60a5fa;
+    --accent-성경: #a78bfa;
+    --danger: #f87171;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Pretendard', 'Noto Sans KR',
+    'Malgun Gothic', system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+/* select이 빠지면 브라우저 기본 글자색(검정)이 쓰여 어두운 테마에서 안 보인다. */
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+/* 옵션 목록은 브라우저가 따로 그린다. 배경까지 짚어 줘야 어느 브라우저에서든 읽힌다. */
+option {
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* ---------------------------------------------------------------- layout */
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  max-width: 720px;
+  margin: 0 auto;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.topbar h1 {
+  font-size: 16px;
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.topbar .spacer {
+  flex: 1;
+}
+
+.chip-button {
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.chip-button:hover {
+  border-color: var(--brand);
+}
+
+.link-button {
+  border: none;
+  background: none;
+  color: var(--brand);
+  font-size: 13px;
+  padding: 4px;
+  text-decoration: none;
+}
+
+.weekbar {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-muted);
+}
+
+.weekbar .week-options {
+  display: flex;
+  gap: 8px;
+}
+
+/*
+ * 주차 버튼은 이름과 날짜를 함께 담는다.
+ * 두 주차의 날짜가 항상 같이 보여야 눌러 보지 않고도 어느 쪽인지 안다.
+ */
+.week-option {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  border-radius: 12px;
+  padding: 7px 12px;
+  line-height: 1.3;
+}
+
+.week-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.week-range {
+  font-size: 12px;
+  opacity: 0.85;
+  font-variant-numeric: tabular-nums;
+}
+
+.week-option[aria-pressed='true'] {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--on-brand);
+  font-weight: 600;
+}
+
+.week-option[aria-pressed='true'] .week-name {
+  font-weight: 800;
+}
+
+/*
+ * 지금 어느 주차에 쓰고 있는지 못 보고 지나치지 않도록 색 띠를 세워 둔다.
+ * flex로 두면 gap이 '이번 주'와 조사 '에' 사이까지 벌려 놓는다. 블록으로 둬야 문장이 붙는다.
+ */
+.week-active {
+  display: block;
+  margin: 0;
+  padding: 4px 0 4px 10px;
+  border-left: 3px solid var(--brand);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.week-active strong {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--brand);
+}
+
+.week-active-dates {
+  display: block;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------- messages */
+
+.thread {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bubble {
+  max-width: 88%;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.bubble.user {
+  align-self: flex-end;
+  background: var(--brand);
+  color: var(--on-brand);
+  border-bottom-right-radius: 4px;
+}
+
+.bubble.bot {
+  align-self: flex-start;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-bottom-left-radius: 4px;
+}
+
+.bubble.error {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.bubble .title {
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.hint {
+  align-self: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+  line-height: 1.7;
+  padding: 12px 8px;
+}
+
+.hint code {
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1px 6px;
+  font-size: 12px;
+}
+
+/* ---------------------------------------------------------------- draft */
+
+.draft {
+  align-self: stretch;
+  border: 1px solid var(--brand);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 14px;
+}
+
+.draft h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 14px;
+}
+
+/* 초안 머리에도 주차를 크게 박아 둔다. 저장 직전에 한 번 더 눈에 들어와야 한다. */
+.draft-week {
+  background: var(--brand);
+  color: var(--on-brand);
+  border-radius: 8px;
+  padding: 2px 10px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.draft-meta {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * 항목 드롭다운. 브라우저 기본 목록 대신 앱 안에서 직접 그린다.
+ * 알약(name-chip) 안에 들어가 앉으므로, 테두리 대신 세로선 하나로 이름과 나뉜다.
+ */
+.pick-select {
+  position: relative;
+  align-self: stretch;
+  display: flex;
+}
+
+.group-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 0 8px 0 0;
+  border: none;
+  border-right: 1px solid var(--border);
+  background: none;
+}
+
+.group-label:hover,
+.group-label:focus-visible,
+.group-label[aria-expanded='true'] {
+  text-decoration: underline;
+}
+
+.chevron {
+  border-left: 3.5px solid transparent;
+  border-right: 3.5px solid transparent;
+  border-top: 4px solid currentColor;
+  transition: transform 0.12s;
+}
+
+.group-label[aria-expanded='true'] .chevron {
+  transform: rotate(180deg);
+}
+
+.pick-menu {
+  /* 좌표는 여는 순간 계산해 style로 넣는다(스크롤 영역에 잘리지 않게). */
+  position: fixed;
+  z-index: 20;
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.pick-menu button {
+  width: 100%;
+  text-align: left;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 5px 8px;
+  border: none;
+  border-radius: 7px;
+  background: none;
+}
+
+.pick-menu button:hover,
+.pick-menu button:focus-visible {
+  background: var(--bg);
+}
+
+.pick-menu button[aria-selected='true'] {
+  background: var(--bg);
+}
+
+.pick-menu button[aria-selected='true']::after {
+  content: ' ✓';
+}
+
+/* 후보 목록의 학년·그룹 부연 */
+.pick-hint {
+  margin-left: 6px;
+  font-weight: 500;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/*
+ * 동명이인 고르기 버튼. 이름이 아직 안 정해졌다는 뜻이라 경고색으로 둔다.
+ * 항목 버튼(.group-label)과 달리 알약 안에서 이름 자리를 차지하므로 세로선이 없다.
+ */
+.candidate-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 190px;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0 2px;
+  border: none;
+  background: none;
+  color: var(--danger);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.candidate-label:hover,
+.candidate-label:focus-visible,
+.candidate-label[aria-expanded='true'] {
+  text-decoration: underline;
+}
+
+.candidate-label[aria-expanded='true'] .chevron {
+  transform: rotate(180deg);
+}
+
+[data-category='문자'] { color: var(--accent-문자); }
+[data-category='통화'] { color: var(--accent-통화); }
+[data-category='성경'] { color: var(--accent-성경); }
+[data-category='만남'] { color: var(--accent-만남); }
+
+.names {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.name-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  border-radius: 999px;
+  padding: 3px 6px 3px 11px;
+  font-size: 13px;
+}
+
+.name-chip.new {
+  border-color: var(--accent-만남);
+  background: color-mix(in srgb, var(--accent-만남) 12%, transparent);
+}
+
+/*
+ * 명단에 없는 이름은 그룹·학년을 그 자리에서 고르게 한다.
+ * 고를 게 둘이라 알약 모양에 우겨넣지 않고 한 줄을 통째로 쓴다.
+ */
+.name-chip.new-student {
+  flex: 1 0 100%;
+  flex-wrap: wrap;
+  gap: 6px;
+  border-radius: 10px;
+  border-color: var(--accent-만남);
+  background: color-mix(in srgb, var(--accent-만남) 12%, transparent);
+  padding: 7px 6px 7px 11px;
+}
+
+/* 배지와 "입력한 이름 → 저장될 이름" 미리보기는 항목 드롭다운과 한 줄을 쓴다. */
+/* 항목 드롭다운과 한 줄을 쓰되, 남은 자리를 다 먹어 입력칸은 다음 줄로 내린다. */
+.new-student-head {
+  flex: 1 0 calc(100% - 96px);
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.new-student-preview {
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.name-chip.new-student input {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 5px 8px;
+  min-width: 0;
+}
+
+.name-chip.new-student .surname-input {
+  flex: 0 1 56px;
+}
+
+.name-chip.new-student .given-input {
+  flex: 1 1 72px;
+}
+
+.name-chip.new-student select {
+  flex: 1 1 96px;
+  max-width: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 5px 6px;
+}
+
+/* 그룹 이름이 길어 '초등학생 …' 으로 잘리면 형제인지 자매인지 알 수 없다. 한 줄을 통째로 준다. */
+.name-chip.new-student .group-select {
+  flex: 1 0 100%;
+}
+
+.name-chip.new-student select:disabled {
+  opacity: 0.5;
+}
+
+/* 한글 아닌 글자가 섞인 칸. 저장 전에 눈에 띄게 한다. */
+.name-chip.new-student input[data-invalid] {
+  border-color: var(--danger);
+}
+
+.new-student-hint {
+  font-size: 12px;
+  color: var(--danger);
+}
+
+.name-chip.ambiguous {
+  border-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+}
+
+.name-chip {
+  max-width: 100%;
+}
+
+.name-chip select {
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  min-width: 0;
+  max-width: 190px;
+  text-overflow: ellipsis;
+}
+
+.name-chip .remove {
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 15px;
+  line-height: 1;
+  padding: 0 4px;
+}
+
+.name-chip .remove:hover {
+  color: var(--danger);
+}
+
+.badge {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.draft-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.draft-actions .primary {
+  flex: 1;
+}
+
+.primary {
+  /* 가로로 늘어나야 하는 곳에서만 늘린다. 세로 방향 컨테이너에서 flex:1을 주면 버튼이 세로로 늘어난다. */
+  flex: 0 0 auto;
+  border: none;
+  background: var(--brand);
+  color: var(--on-brand);
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-weight: 600;
+}
+
+.primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.secondary {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  border-radius: 10px;
+  padding: 10px 16px;
+}
+
+/* ------------------------------------------------------------- composer */
+
+.composer {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.composer textarea {
+  flex: 1;
+  resize: none;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: var(--surface-muted);
+  min-height: 44px;
+  max-height: 160px;
+  outline: none;
+}
+
+.composer textarea:focus {
+  border-color: var(--brand);
+}
+
+.composer .primary {
+  flex: 0 0 auto;
+}
+
+/* ---------------------------------------------------------------- gates */
+
+.gate {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 28px 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.gate h2 {
+  margin: 0;
+  font-size: 19px;
+}
+
+.gate p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.gate input[type='text'],
+.gate input[type='password'] {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 11px 13px;
+  background: var(--surface-muted);
+  outline: none;
+}
+
+.gate input:focus {
+  border-color: var(--brand);
+}
+
+.roster {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.roster button {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 8px 15px;
+}
+
+.roster button:hover {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.roster button[aria-pressed='true'] {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--on-brand);
+  font-weight: 600;
+}
+
+.group-heading {
+  margin: 6px 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+.gate section {
+  display: flex;
+  flex-direction: column;
+}
+
+.manual-add {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.manual-controls {
+  display: flex;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.manual-controls select {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 9px 10px;
+  background: var(--surface-muted);
+  color: inherit;
+}
+
+.warning {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--accent-만남);
+}
+
+/* ---------------------------------------------------------------- panel */
+
+.panel-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  z-index: 20;
+}
+
+.panel {
+  background: var(--surface);
+  width: 100%;
+  max-width: 720px;
+  max-height: 76dvh;
+  overflow-y: auto;
+  border-radius: 18px 18px 0 0;
+  padding: 18px 18px calc(18px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.panel header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.panel h2 {
+  margin: 0;
+  font-size: 16px;
+  flex: 1;
+}
+
+.record-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-top: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.record-row .cat {
+  flex: 0 0 44px;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.record-row .who {
+  flex: 1;
+}
+
+.record-row button {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--danger);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.empty {
+  color: var(--text-muted);
+  font-size: 14px;
+  padding: 10px 0;
+}
+
+/* 관리 화면(통계) */
+.stat-group {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+
+.stat-error {
+  color: var(--danger);
+}
