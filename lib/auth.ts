@@ -29,3 +29,24 @@ export function unauthorizedResponse(request: Request): Response | null {
   if (isAuthorized(request)) return null;
   return Response.json({ error: '비밀번호가 올바르지 않습니다.' }, { status: 401 });
 }
+
+/**
+ * 관리 화면(통계)은 봉사자용 비밀번호와 따로 건다.
+ * ADMIN_PASSWORD 가 없으면 APP_PASSWORD 로 대신하고, 둘 다 없으면 잠그지 않는다.
+ */
+export const ADMIN_PASSWORD_HEADER = 'x-admin-password';
+
+function adminPassword(): string | undefined {
+  return process.env.ADMIN_PASSWORD || process.env.APP_PASSWORD;
+}
+
+export function adminPasswordRequired(): boolean {
+  return Boolean(adminPassword());
+}
+
+export function adminUnauthorizedResponse(request: Request): Response | null {
+  const expected = adminPassword();
+  if (!expected) return null;
+  if (safeEqual(request.headers.get(ADMIN_PASSWORD_HEADER) ?? '', expected)) return null;
+  return Response.json({ error: '관리자 비밀번호가 올바르지 않습니다.' }, { status: 401 });
+}
