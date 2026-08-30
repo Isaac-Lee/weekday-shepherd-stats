@@ -382,6 +382,43 @@ export async function deleteRecord(id: string): Promise<boolean> {
   return true;
 }
 
+/**
+ * 봉사자의 담당 그룹을 명단에 적어 둔다.
+ * 기기(localStorage)에만 있으면 폰을 바꾸거나 다른 사람이 대신 입력할 때 사라지므로 시트에 남긴다.
+ * 명단에 없는 이름이면 아래에 새 줄로 붙인다.
+ */
+export async function saveVolunteerGroups(name: string, groups: Group[]): Promise<void> {
+  const sheets = getClient();
+  await ensureLayout();
+
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: spreadsheetId(),
+    range: ref(SHEET_VOLUNTEERS, 'A2:A'),
+  });
+  const rows = (response.data.values ?? []).map((row) => String(row[0] ?? '').trim());
+  const index = rows.indexOf(name);
+  const value = groups.join(GROUP_SEPARATOR);
+
+  if (index >= 0) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetId(),
+      // 헤더 1줄 + 0-based 보정
+      range: ref(SHEET_VOLUNTEERS, `B${index + 2}`),
+      valueInputOption: 'RAW',
+      requestBody: { values: [[value]] },
+    });
+    return;
+  }
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: spreadsheetId(),
+    range: ref(SHEET_VOLUNTEERS, 'A:C'),
+    valueInputOption: 'RAW',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: { values: [[name, value, '앱에서 추가']] },
+  });
+}
+
 /** 학생명단을 비고까지 읽는다. 시트 행 번호(0-based)를 함께 돌려준다. */
 async function readStudentRows(): Promise<{ student: Student; note: string; rowIndex: number }[]> {
   const sheets = getClient();

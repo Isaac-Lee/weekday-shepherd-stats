@@ -173,7 +173,15 @@ export default function Page() {
     return <VolunteerGate password={password} onPick={handleMe} onPasswordReject={() => handlePassword('')} />;
   }
 
-  return <Chat config={config} me={me} password={password} onChangeName={() => handleMe(null)} />;
+  return (
+    <Chat
+      config={config}
+      me={me}
+      password={password}
+      onUpdateMe={handleMe}
+      onChangeName={() => handleMe(null)}
+    />
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -206,6 +214,108 @@ function PasswordGate({ onSubmit }: { onSubmit: (value: string) => void }) {
           들어가기
         </button>
       </form>
+    </main>
+  );
+}
+
+// ---------------------------------------------------------------------------
+
+/** 담당 그룹을 저장한다. 시트에 적어 두면 다음부터 이 값이 기본값이 된다. */
+async function saveGroups(
+  name: string,
+  groups: Group[],
+  headers: Record<string, string>,
+): Promise<string | null> {
+  try {
+    const response = await fetch('/api/volunteer', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ name, groups }),
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      return data.error ?? '담당 그룹을 저장하지 못했습니다.';
+    }
+    return null;
+  } catch {
+    return '네트워크 오류로 담당 그룹을 저장하지 못했습니다.';
+  }
+}
+
+/**
+ * 담당 그룹 고르기. 처음 들어올 때와 나중에 고칠 때 같은 화면을 쓴다.
+ * 담당은 이름 매칭 후보를 좁히는 힌트일 뿐이라 안 골라도 된다.
+ */
+function GroupPicker({
+  name,
+  initial,
+  saveLabel,
+  cancelLabel,
+  onDone,
+  onCancel,
+}: {
+  name: string;
+  initial: Group[];
+  /** 담당을 안 골랐을 때 쓰는 버튼 글자 */
+  saveLabel: string;
+  cancelLabel: string;
+  onDone: (groups: Group[]) => Promise<void> | void;
+  onCancel: () => void;
+}) {
+  const [groups, setGroups] = useState<Group[]>(initial);
+  const [busy, setBusy] = useState(false);
+
+  return (
+    <main className="shell">
+      <div className="topbar">
+        <h1>주중 목양 현황</h1>
+      </div>
+      <div className="gate">
+        <h2>{name} 님, 어느 그룹을 맡고 계신가요?</h2>
+        <p>
+          이름을 찾을 때 담당 그룹부터 봅니다. 예를 들어 <code>은서</code> 라고만 적어도 담당 그룹의 학생을
+          먼저 찾아 줍니다. 안 골라도 되고, 그러면 학생 전체에서 찾습니다.
+          <br />
+          고른 담당은 시트에 저장되어 다음부터 기본값이 됩니다. 나중에 위쪽 이름 단추에서 언제든 바꿀 수 있어요.
+        </p>
+
+        <div className="roster">
+          {GROUPS.map((group) => (
+            <button
+              key={group}
+              type="button"
+              aria-pressed={groups.includes(group)}
+              className={groups.includes(group) ? 'picked' : undefined}
+              onClick={() =>
+                setGroups((prev) =>
+                  prev.includes(group) ? prev.filter((g) => g !== group) : [...prev, group],
+                )
+              }
+            >
+              {group}
+            </button>
+          ))}
+        </div>
+
+        <button
+          className="primary"
+          type="button"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              await onDone(groups);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          {busy ? '저장 중…' : groups.length > 0 ? `${groups.join(', ')} 담당으로 저장` : saveLabel}
+        </button>
+        <button className="secondary" type="button" disabled={busy} onClick={onCancel}>
+          {cancelLabel}
+        </button>
+      </div>
     </main>
   );
 }
@@ -260,10 +370,10 @@ function VolunteerGate({
   onPick: (volunteer: Volunteer) => void;
   onPasswordReject: () => void;
 }) {
-  const { roster, error } = useRoster(password, onPasswordReject);
+  const { roster, error, headers } = useRoster(password, onPasswordReject);
   const [query, setQuery] = useState('');
   const [chosen, setChosen] = useState<Volunteer | null>(null);
-  const [groups, setGroups] = useState<Group[]>([]);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const term = query.trim();
   const volunteers = roster?.volunteers ?? [];
@@ -280,43 +390,19 @@ function VolunteerGate({
 
   if (chosen) {
     return (
-      <main className="shell">
-        <div className="topbar">
-          <h1>주중 목양 현황</h1>
-        </div>
-        <div className="gate">
-          <h2>{chosen.name} 님, 어느 그룹을 맡고 계신가요?</h2>
-          <p>
-            이름을 찾을 때 담당 그룹부터 봅니다. 예를 들어 <code>은서</code> 라고만 적어도 담당 그룹의 학생을
-            먼저 찾아 줍니다. 안 골라도 되고, 그러면 학생 전체에서 찾습니다.
-          </p>
-
-          <div className="roster">
-            {GROUPS.map((group) => (
-              <button
-                key={group}
-                type="button"
-                aria-pressed={groups.includes(group)}
-                className={groups.includes(group) ? 'picked' : undefined}
-                onClick={() =>
-                  setGroups((prev) =>
-                    prev.includes(group) ? prev.filter((g) => g !== group) : [...prev, group],
-                  )
-                }
-              >
-                {group}
-              </button>
-            ))}
-          </div>
-
-          <button className="primary" type="button" onClick={() => onPick({ ...chosen, groups })}>
-            {groups.length > 0 ? `${groups.join(', ')} 담당으로 시작` : '고르지 않고 시작'}
-          </button>
-          <button className="secondary" type="button" onClick={() => setChosen(null)}>
-            이름 다시 고르기
-          </button>
-        </div>
-      </main>
+      <GroupPicker
+        name={chosen.name}
+        initial={chosen.groups}
+        saveLabel="고르지 않고 시작"
+        cancelLabel="이름 다시 고르기"
+        onCancel={() => setChosen(null)}
+        onDone={async (groups) => {
+          // 저장에 실패해도 입력은 계속할 수 있게 둔다. 담당은 어디까지나 매칭 힌트다.
+          const failed = groups.length > 0 ? await saveGroups(chosen.name, groups, headers) : null;
+          setSaveError(failed);
+          onPick({ ...chosen, groups });
+        }}
+      />
     );
   }
 
@@ -332,7 +418,7 @@ function VolunteerGate({
           입력할 수 있어요.
         </p>
 
-        {error && <p style={{ color: 'var(--danger)' }}>{error}</p>}
+        {(error || saveError) && <p style={{ color: 'var(--danger)' }}>{error ?? saveError}</p>}
 
         <input
           type="text"
@@ -372,11 +458,14 @@ function Chat({
   config,
   me,
   password,
+  onUpdateMe,
   onChangeName,
 }: {
   config: AppConfig;
   me: Volunteer;
   password: string;
+  /** 담당 그룹이 바뀌었을 때 이 기기에 다시 저장한다. */
+  onUpdateMe: (volunteer: Volunteer) => void;
   onChangeName: () => void;
 }) {
   const { roster, headers, reload } = useRoster(password);
@@ -386,9 +475,16 @@ function Chat({
   const [input, setInput] = useState('');
   const [saving, setSaving] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [editingGroups, setEditingGroups] = useState(false);
   const threadRef = useRef<HTMLDivElement>(null);
 
   const students = roster?.students ?? [];
+
+  // 담당 그룹의 원본은 시트다. 다른 기기나 시트에서 고쳤으면 이 기기 값을 거기에 맞춘다.
+  useEffect(() => {
+    const onSheet = roster?.volunteers.find((volunteer) => volunteer.name === me.name);
+    if (onSheet && onSheet.groups.join() !== me.groups.join()) onUpdateMe(onSheet);
+  }, [roster, me, onUpdateMe]);
 
   useEffect(() => {
     threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: 'smooth' });
@@ -547,14 +643,43 @@ function Chat({
 
   const activeWeek = config.weeks.find((week) => week.key === weekKey);
 
+  if (editingGroups) {
+    return (
+      <GroupPicker
+        name={me.name}
+        initial={me.groups}
+        saveLabel="담당 없이 저장"
+        cancelLabel="그만두기"
+        onCancel={() => setEditingGroups(false)}
+        onDone={async (groups) => {
+          const failed = await saveGroups(me.name, groups, headers);
+          if (failed) say(failed, 'error');
+          onUpdateMe({ ...me, groups });
+          setEditingGroups(false);
+          reload();
+        }}
+      />
+    );
+  }
+
   return (
     <main className="shell">
       <div className="topbar">
         <h1>주중 목양 현황</h1>
         <div className="spacer" />
-        <button className="chip-button" type="button" onClick={onChangeName}>
-          {me.name} ▾
-        </button>
+        {/* 이름과 담당을 한 자리에서 보여 주고, 눌러서 둘 다 바꾼다. */}
+        <PickMenu
+          value=""
+          options={[
+            { value: 'groups', label: '담당 그룹 바꾸기', hint: volunteerScope(me) },
+            { value: 'name', label: '이름 다시 고르기' },
+          ]}
+          trigger={`${me.name} · ${volunteerScope(me)}`}
+          triggerClass="chip-button"
+          ariaLabel={`${me.name}, 담당 ${volunteerScope(me)} · 바꾸기`}
+          menuLabel="내 정보"
+          onChange={(picked) => (picked === 'groups' ? setEditingGroups(true) : onChangeName())}
+        />
         <button className="chip-button" type="button" onClick={() => setPanelOpen(true)}>
           내 기록
         </button>

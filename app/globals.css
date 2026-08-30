@@ -122,6 +122,9 @@ option {
 }
 
 .chip-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   border: 1px solid var(--border);
   background: var(--surface-muted);
   color: var(--text);
@@ -131,8 +134,13 @@ option {
   white-space: nowrap;
 }
 
-.chip-button:hover {
+.chip-button:hover,
+.chip-button[aria-expanded='true'] {
   border-color: var(--brand);
+}
+
+.chip-button[aria-expanded='true'] .chevron {
+  transform: rotate(180deg);
 }
 
 .link-button {
