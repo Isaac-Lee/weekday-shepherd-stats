@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "seed": "tsx --env-file=.env.local scripts/seed.ts",
     "refresh": "tsx --env-file=.env.local scripts/refresh.ts",
-    "stats": "tsx --env-file=.env.local scripts/stats.ts"
+    "stats": "tsx --env-file=.env.local scripts/stats.ts",
+    "report": "node --env-file=.env.local --import tsx scripts/report.ts"
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",

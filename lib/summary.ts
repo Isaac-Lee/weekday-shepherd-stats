@@ -240,16 +240,22 @@ export function volunteersMissingFromRoster(
 
 export type { Group };
 
-/** 그 주에 목양을 한 건도 받지 못한 학생. 명단 순서(그룹 → 학년)로 돌려준다. */
+/**
+ * 그 주에 지정한 항목 중 어느 것도 받지 못한 학생. 명단 순서(그룹 → 학년)로 돌려준다.
+ * categories 를 안 주면 전체 항목 기준(= 목양을 한 건도 못 받음)이다.
+ */
 export function studentsWithoutRecords(
   records: ShepherdRecord[],
   students: Student[],
   weekKey: string,
+  categories: readonly Category[] = CATEGORIES,
 ): Student[] {
-  const shepherded = new Set(
-    records.filter((record) => record.weekKey === weekKey).map((record) => studentKey(record.student)),
+  const covered = new Set(
+    records
+      .filter((record) => record.weekKey === weekKey && categories.includes(record.category))
+      .map((record) => studentKey(record.student)),
   );
   return students
-    .filter((student) => !shepherded.has(studentKey(student)))
+    .filter((student) => !covered.has(studentKey(student)))
     .sort((a, b) => studentSortKey(a) - studentSortKey(b));
 }
