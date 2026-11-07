@@ -419,6 +419,75 @@ export async function saveVolunteerGroups(name: string, groups: Group[]): Promis
   });
 }
 
+/** 관리 화면에서 정리할 후보: 앱이 명단에 넣은 학생과 그 학생의 기록 수 */
+export async function readAppAddedStudents(): Promise<{ student: Student; records: number }[]> {
+  const [rows, records] = await Promise.all([readStudentRows(), readRecords()]);
+  return rows
+    .filter((row) => row.note.startsWith(APP_ADDED_NOTE))
+    .map((row) => ({
+      student: row.student,
+      records: records.filter((record) => studentKey(record.student) === studentKey(row.student)).length,
+    }));
+}
+
+/**
+ * 잘못 입력된 학생을 정리한다. 명단 행을 지우고, 기록은
+ * mergeInto 가 있으면 그 학생 이름으로 옮기고 없으면 함께 지운다.
+ * 관리자가 직접 고른 학생이라 '앱에서 추가' 표시 여부는 따지지 않는다.
+ */
+export async function removeStudent(student: Student, mergeInto?: Student): Promise<number> {
+  const sheets = getClient();
+  const ids = await ensureLayout();
+  const recordSheetId = ids.get(SHEET_RECORDS)!;
+  const studentSheetId = ids.get(SHEET_STUDENTS)!;
+  const key = studentKey(student);
+
+  // readRecords 는 깨진 행을 건너뛰므로 행 번호는 원본 값에서 직접 센다.
+  const raw = await sheets.spreadsheets.values.get({
+    spreadsheetId: spreadsheetId(),
+    range: ref(SHEET_RECORDS, 'A2:I'),
+  });
+  const recordRows: number[] = [];
+  (raw.data.values ?? []).forEach((row, offset) => {
+    const grade = String(row[8] ?? '').trim();
+    const rowKey = studentKey({
+      name: String(row[6] ?? '').trim(),
+      group: String(row[7] ?? '').trim() as Group,
+      grade: isGrade(grade) ? grade : UNCLASSIFIED,
+    });
+    if (rowKey === key) recordRows.push(offset + 1); // 헤더 1줄
+  });
+
+  if (mergeInto && recordRows.length > 0) {
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId: spreadsheetId(),
+      requestBody: {
+        valueInputOption: 'RAW',
+        data: recordRows.map((rowIndex) => ({
+          range: ref(SHEET_RECORDS, `G${rowIndex + 1}:I${rowIndex + 1}`),
+          values: [[mergeInto.name, mergeInto.group, mergeInto.grade]],
+        })),
+      },
+    });
+  }
+
+  const deleteRow = (sheetId: number, rowIndex: number): sheets_v4.Schema$Request => ({
+    deleteDimension: { range: { sheetId, dimension: 'ROWS', startIndex: rowIndex, endIndex: rowIndex + 1 } },
+  });
+  const rosterRow = (await readStudentRows()).find((row) => studentKey(row.student) === key);
+  const requests = [
+    // 아래쪽부터 지워야 위쪽 행 번호가 밀리지 않는다.
+    ...(mergeInto ? [] : [...recordRows].reverse().map((rowIndex) => deleteRow(recordSheetId, rowIndex))),
+    ...(rosterRow ? [deleteRow(studentSheetId, rosterRow.rowIndex)] : []),
+  ];
+  if (requests.length > 0) {
+    await sheets.spreadsheets.batchUpdate({ spreadsheetId: spreadsheetId(), requestBody: { requests } });
+  }
+
+  await refreshSummaries();
+  return recordRows.length;
+}
+
 /** 학생명단을 비고까지 읽는다. 시트 행 번호(0-based)를 함께 돌려준다. */
 async function readStudentRows(): Promise<{ student: Student; note: string; rowIndex: number }[]> {
   const sheets = getClient();

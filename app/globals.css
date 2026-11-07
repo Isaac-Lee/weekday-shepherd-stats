@@ -834,3 +834,18 @@ option {
 .stat-error {
   color: var(--danger);
 }
+
+/* 관리 화면: 앱에서 추가된 학생 정리 */
+.cleanup-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.cleanup-row select {
+  flex: 1;
+  min-width: 0;
+  padding: 8px;
+}

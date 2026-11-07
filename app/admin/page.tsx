@@ -2,7 +2,8 @@
 
 /**
  * 관리 화면. 기록을 손대지 않고 통계만 본다.
- * 지금은 '그 주에 목양을 한 건도 받지 못한 학생'만 보여 준다.
+ * '그 주에 목양을 한 건도 받지 못한 학생'을 보여 주고,
+ * 오타로 앱에서 추가된 학생을 명단·기록에서 한 번에 정리한다.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -174,7 +175,106 @@ export default function AdminPage() {
           새로고침
         </button>
       </div>
+
+      {password !== null && <StudentCleanup password={password} onChanged={() => void load()} />}
     </main>
+  );
+}
+
+interface AddedStudent {
+  student: Student;
+  records: number;
+}
+
+const keyOf = (student: Student) => `${student.name}|${student.group}|${student.grade}`;
+
+/** 앱에서 추가된 학생 목록. 오타면 맞는 학생에게 합치거나 기록째 지운다. */
+function StudentCleanup({ password, onChanged }: { password: string; onChanged: () => void }) {
+  const [added, setAdded] = useState<AddedStudent[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
+  /** 학생별로 고른 합칠 대상. 빈 값이면 기록까지 삭제 */
+  const [targets, setTargets] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const headers = password ? { [ADMIN_PASSWORD_HEADER]: password } : undefined;
+
+  const load = useCallback(async () => {
+    const response = await fetch('/api/students', { headers });
+    const data = await response.json();
+    if (!response.ok) return setMessage(data.error ?? '명단을 불러오지 못했습니다.');
+    setAdded(data.added);
+    setStudents(data.students);
+  }, [password]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function remove({ student, records }: AddedStudent) {
+    const target = students.find((candidate) => keyOf(candidate) === targets[keyOf(student)]);
+    const question = target
+      ? `'${student.name}' 기록 ${records}건을 '${target.name}'(${target.group} ${target.grade})에게 옮기고 명단에서 지울까요?`
+      : `'${student.name}'을(를) 명단에서 지우고 기록 ${records}건도 함께 삭제할까요? 되돌릴 수 없습니다.`;
+    if (!window.confirm(question)) return;
+
+    setBusy(keyOf(student));
+    setMessage(null);
+    try {
+      const response = await fetch('/api/students', {
+        method: 'DELETE',
+        headers: { 'content-type': 'application/json', ...headers },
+        body: JSON.stringify({ student, mergeInto: target }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? '정리하지 못했습니다.');
+      setMessage(target ? `'${student.name}' → '${target.name}' 합쳤습니다.` : `'${student.name}'을(를) 지웠습니다.`);
+      await load();
+      onChanged();
+    } catch (cause) {
+      setMessage(cause instanceof Error ? cause.message : '정리하지 못했습니다.');
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <div className="gate">
+      <h2>앱에서 추가된 학생</h2>
+      <p>이름을 잘못 적어 새로 들어간 학생이면, 맞는 학생에게 합치거나 기록째 지우세요. 받은목양·한목양 표도 다시 그려집니다.</p>
+      {message && <p className="stat-error">{message}</p>}
+      {added.length === 0 && <p>정리할 학생이 없습니다.</p>}
+      {added.map((entry) => {
+        const key = keyOf(entry.student);
+        return (
+          <div className="cleanup-row" key={key}>
+            <span className="name-chip">
+              {entry.student.name}
+              <span className="badge">
+                {entry.student.group} {entry.student.grade} · 기록 {entry.records}건
+              </span>
+            </span>
+            <select
+              aria-label={`${entry.student.name} 합칠 학생`}
+              value={targets[key] ?? ''}
+              onChange={(event) => setTargets({ ...targets, [key]: event.target.value })}
+            >
+              <option value="">합치지 않고 기록째 삭제</option>
+              {students
+                .filter((candidate) => keyOf(candidate) !== key)
+                .map((candidate) => (
+                  <option key={keyOf(candidate)} value={keyOf(candidate)}>
+                    → {candidate.name} ({candidate.group} {candidate.grade})
+                  </option>
+                ))}
+            </select>
+            <button className="secondary" type="button" disabled={busy !== null} onClick={() => void remove(entry)}>
+              {busy === key ? '정리 중…' : targets[key] ? '합치기' : '삭제'}
+            </button>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
